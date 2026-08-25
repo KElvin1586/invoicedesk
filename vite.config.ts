@@ -4,6 +4,12 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  preview: {
+    allowedHosts: [
+      'work-1-lioohljgrvevafpn.prod-runtime.all-hands.dev',
+      'work-2-lioohljgrvevafpn.prod-runtime.all-hands.dev',
+    ],
+  },
   build: {
     rollupOptions: {
       output: {
