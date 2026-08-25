@@ -28,15 +28,17 @@ export { PRESET_COLORS };
  * Safe to call on every load.
  */
 export async function ensureSeedData(): Promise<Account> {
-  const existingAccounts = await db.accounts.toArray();
-  if (existingAccounts.length > 0) return existingAccounts[0];
+  // Read + write inside one Dexie transaction so two concurrent callers
+  // (e.g. StrictMode double-mount) cannot both observe "empty" and insert.
+  return db.transaction('rw', [db.accounts, db.categories, db.settings], async () => {
+    const existingAccounts = await db.accounts.toArray();
+    if (existingAccounts.length > 0) return existingAccounts[0];
 
-  const account: Account = {
-    ...DEFAULT_ACCOUNT,
-    id: crypto.randomUUID(),
-    createdAt: Date.now(),
-  };
-  await db.transaction('rw', [db.accounts, db.categories, db.settings], async () => {
+    const account: Account = {
+      ...DEFAULT_ACCOUNT,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+    };
     await db.accounts.add(account);
     if ((await db.categories.count()) === 0) {
       const now = Date.now();
@@ -50,6 +52,6 @@ export async function ensureSeedData(): Promise<Account> {
     if (!(await db.settings.get('settings'))) {
       await db.settings.add({ id: 'settings', currency: 'USD', createdAt: Date.now() });
     }
+    return account;
   });
-  return account;
 }

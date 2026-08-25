@@ -15,6 +15,21 @@ All notable changes to this project are documented here.
 - Reports page (Premium) with balance trend, top categories, and monthly summaries
 - CSV export (Free) — full backup/restore and import with referential-integrity validation (Premium)
 - Freemium entitlement system with 🔒 PREMIUM badges, gates, and upgrade modal
+- Pricing page with Free/Premium comparison table and upgrade CTA
+- Development-only Free ↔ Premium test mode in Settings + internal test checkout page
 - Centralized input validation in `domain/validators.ts`
 - Responsive layout (desktop sidebar / mobile bottom navigation)
-- 63 unit & UI tests with vitest
+- 65 unit & UI tests with vitest
+
+### Changed (commercial hardening pass)
+
+- Removed placeholder upgrade URL default; `VITE_UPGRADE_URL` is now
+  optional and honestly reflected in the Upgrade modal when unset
+- Upgrade modal now has proper dialog accessibility (focus trap, Esc,
+  aria-labelledby) and shows which feature was gated
+- All dialogs share that accessibility foundation (focus management,
+  focus restore)
+- Fixed entitlement provider ordering so router context is available to
+  the upgrade modal (was a real crash on `/checkout`)
+- Added SEO/OG metadata and a robots directive
+- Documentation: added PRICING.md, COMMERCIAL-LICENSE.md, and renamed LICENSE → LICENSE.md

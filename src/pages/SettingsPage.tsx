@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { TEST_MODE_ENABLED } from '../config';
 import { useData } from '../hooks/DataProvider';
 import { useEntitlement } from '../entitlement/EntitlementContext';
 import { buildExportPayload, importJSON } from '../data/importExport';
@@ -22,7 +24,6 @@ export function SettingsPage() {
   const [newAccountName, setNewAccountName] = useState('');
   const [mergeMode, setMergeMode] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmUnlock, setConfirmUnlock] = useState(false);
 
   const currency = settings?.currency ?? 'USD';
 
@@ -139,31 +140,51 @@ export function SettingsPage() {
           {entitlement.isPremium ? ' — everything is unlocked.' : ' — free limits apply.'}
         </p>
         <div className="mt-3 flex flex-wrap gap-3">
-          {!entitlement.isPremium ? (
-            <button
-              type="button"
-              onClick={() => setConfirmUnlock(true)}
-              className="rounded-lg border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-            >
-              Manage plan
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                entitlement.setPlan('free');
-                setStatus('Switched to the Free plan.');
-              }}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-            >
-              Downgrade to Free
-            </button>
-          )}
+          <Link
+            to="/pricing"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            View plans &amp; pricing
+          </Link>
         </div>
         <p className="mt-3 text-xs text-slate-400">
           Premium status is stored locally in this browser — there is no license server,
           no tracking, no network calls. The Upgrade button links to the configured checkout URL.
         </p>
+
+        {TEST_MODE_ENABLED && (
+          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <h3 className="text-sm font-semibold text-amber-900">
+              Development test mode
+            </h3>
+            <p className="mt-1 text-xs text-amber-800">
+              Toggle the entitlement locally without processing money. This panel
+              is disabled in production builds.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  entitlement.setPlan('premium');
+                  setStatus('Test mode: Premium enabled.');
+                }}
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                Test as Premium
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  entitlement.setPlan('free');
+                  setStatus('Test mode: back to Free.');
+                }}
+                className="rounded-lg border border-amber-600 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+              >
+                Test as Free
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -301,35 +322,6 @@ export function SettingsPage() {
           Erase everything
         </button>
       </section>
-
-      {confirmUnlock && (
-        <Modal title="Manage plan" onClose={() => setConfirmUnlock(false)}>
-          <p className="text-sm text-slate-600">
-            To upgrade, use the one-time checkout link. Already purchased? The entitlement is
-            stored locally — choose below. No license key checking is performed.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                entitlement.setPlan('premium');
-                setConfirmUnlock(false);
-                setStatus('Premium enabled — thanks!');
-              }}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
-            >
-              Mark as purchased (Premium)
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmUnlock(false)}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
 
       {confirmReset && (
         <Modal title="Erase everything" onClose={() => setConfirmReset(false)}>

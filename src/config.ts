@@ -1,20 +1,33 @@
 /**
  * Central app configuration.
  *
- * The one-time Premium price and the upgrade/checkout URL are
- * configurable through Vite environment variables, with defaults
- * baked into the build. There is no fake payment flow: the Upgrade
- * modal simply links out to the configured checkout URL.
+ * There is intentionally no default checkout URL: a real payment
+ * provider can be wired in later by setting VITE_UPGRADE_URL at
+ * build time — no code changes required. When no URL is configured,
+ * development builds fall back to the internal test checkout page,
+ * and production builds honestly report that checkout is not
+ * configured instead of sending users to a placeholder domain.
  */
 export const APP_NAME = 'PocketLedger';
 export const APP_VERSION = '1.0.0';
 
 export const PREMIUM_PRICE =
   (import.meta.env.VITE_PREMIUM_PRICE as string | undefined) ?? '9.99';
+export const PREMIUM_CURRENCY =
+  (import.meta.env.VITE_PREMIUM_CURRENCY as string | undefined) ?? 'USD';
 
-export const UPGRADE_URL =
-  (import.meta.env.VITE_UPGRADE_URL as string | undefined) ??
-  'https://pocketledger.app/upgrade';
+/** Configured checkout URL. Empty means "not configured". */
+export const UPGRADE_URL: string =
+  (import.meta.env.VITE_UPGRADE_URL as string | undefined) ?? '';
+
+/**
+ * Development-only entitlement test mode. Flipping Free ↔ Premium
+ * without real money is allowed only in non-production builds.
+ */
+export const TEST_MODE_ENABLED: boolean = !import.meta.env.PROD;
+
+/** Human-readable price label, e.g. "$9.99 USD". */
+export const PREMIUM_PRICE_LABEL = `$${PREMIUM_PRICE} ${PREMIUM_CURRENCY}`;
 
 /** Free-plan limits. */
 export const FREE_TRANSACTION_LIMIT = 150;

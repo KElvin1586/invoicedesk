@@ -53,5 +53,5 @@ The app is already offline-first by design (IndexedDB). If you want installabili
 Use env vars to adjust pricing/URL before building:
 
 ```
-VITE_UPGRADE_URL=https://your-store.com/checkout VITE_PREMIUM_PRICE_USD=14.99 npm run build
+VITE_UPGRADE_URL="https://your-store.com/checkout" VITE_PREMIUM_PRICE=14.99 VITE_PREMIUM_CURRENCY=USD npm run build
 ```

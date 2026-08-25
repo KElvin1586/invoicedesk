@@ -46,18 +46,23 @@ The test suite covers money/date/calculation logic, storage & repository CRUD, C
 
 ## Configuration
 
-Configuration lives in `src/config.ts`:
-
-- `UPGRADE_URL` — checkout URL that the upgrade modal targets (default: example URL; point this at your real storefront).
-- `PREMIUM_PRICE_USD` — one-time price displayed (default `9.99`).
-- `FREE_TRANSACTION_LIMIT` — cap for the Free plan (default 150).
-
-Environment overrides (Vite loads these if present) use `VITE_UPGRADE_URL` and `VITE_PREMIUM_PRICE_USD`. Create a `.env` file:
+Configuration lives in `src/config.ts` and is driven by Vite environment
+variables (see `PRICING.md` for the full schema):
 
 ```
-VITE_UPGRADE_URL=https://your-store.com/checkout
-VITE_PREMIUM_PRICE_USD=19.99
+# .env
+VITE_UPGRADE_URL=
+VITE_PREMIUM_PRICE=9.99
+VITE_PREMIUM_CURRENCY=USD
 ```
+
+Behavior:
+
+- `VITE_UPGRADE_URL` empty and **development** build → Upgrade modal links to
+  the internal development test checkout page (`#/checkout`).
+- `VITE_UPGRADE_URL` empty and **production** build → the modal honestly states
+  that no checkout URL is configured (never a placeholder domain).
+- `VITE_UPGRADE_URL` set → Upgrade modal links to that URL regardless.
 
 ## Browser requirements
 

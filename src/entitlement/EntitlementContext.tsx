@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { PREMIUM_PRICE, UPGRADE_URL, type Plan } from '../config';
+import type { Plan } from '../config';
 import { UpgradeModal } from './UpgradeModal';
 
 export type Feature =
@@ -57,6 +57,8 @@ export interface Entitlement {
    * and shows the upgrade modal otherwise.
    */
   gate(feature: Feature): boolean;
+  /** Open the upgrade modal without gating a specific feature. */
+  openUpgrade(feature?: Feature): void;
   setPlan(plan: Plan): void;
 }
 
@@ -80,11 +82,14 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
     },
     [isPremium],
   );
+  const openUpgrade = useCallback((f?: Feature) => {
+    setPendingFeature(f ?? 'advanced-reports');
+  }, []);
   const setPlan = useCallback((p: Plan) => setPlanState(p), []);
 
   const value = useMemo<Entitlement>(
-    () => ({ plan, isPremium, canUse, gate, setPlan }),
-    [plan, isPremium, canUse, gate, setPlan],
+    () => ({ plan, isPremium, canUse, gate, openUpgrade, setPlan }),
+    [plan, isPremium, canUse, gate, openUpgrade, setPlan],
   );
 
   return (
@@ -104,4 +109,4 @@ export function useEntitlement(): Entitlement {
   return ctx;
 }
 
-export { FEATURE_LABELS, PREMIUM_PRICE, UPGRADE_URL };
+export { FEATURE_LABELS };

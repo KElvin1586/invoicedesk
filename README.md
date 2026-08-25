@@ -12,7 +12,9 @@ A production-ready, offline-first personal income & expense tracker. All data li
 - **Multiple accounts/wallets** (Premium) — track Cash, Bank, etc.
 - **Reports** (Premium): balance trend, top categories, monthly summaries
 - **Export/Import**: full JSON backup/restore with referential-integrity validation + CSV export
-- **Freemium model**: centralized entitlement system with a Free plan (up to 150 transactions) and Premium unlock (configurable one-time price, default $9.99)
+- **Freemium model**: centralized entitlement system with a Free plan (up to 150 transactions, 12 categories) and Premium unlock (configurable one-time price, default $9.99)
+- **Pricing page** with professional Free/Premium comparison and upgrade CTA
+- **No fake payments**: the built-in `Upgrade` action links to the configurable checkout URL; development builds also expose a clearly-labelled **development test checkout** page and **dev-only free/premium toggles** on Settings
 - **Privacy**: financial data never leaves the browser; the only outbound request is the configurable upgrade URL
 - **Responsive design** powered by Tailwind CSS (sidebar on desktop, bottom navigation on mobile)
 
@@ -51,7 +53,15 @@ tests/                   # unit + UI tests (vitest)
 
 ## Freemium gating
 
-Premium features show a 🔒 PREMIUM badge in navigation, render a gate screen, and open an upgrade modal that links to the configurable `UPGRADE_URL` (see `src/config.ts`). Free users can never exceed `FREE_TRANSACTION_LIMIT` transactions — the gate is requested from the centralized `gate(feature)` helper in `EntitlementContext`.
+Premium features show a 🔒 PREMIUM badge in navigation, render a gate screen, and open the centralized upgrade modal. Free users can never exceed `FREE_TRANSACTION_LIMIT` transactions — the gate is requested from the centralized `gate(feature)` helper in `EntitlementContext`.
+
+The upgrade action resolves like this:
+
+1. If `VITE_UPGRADE_URL` is configured at build time, the button opens it.
+2. Otherwise, **development builds only** route to `#/checkout` — an internal test-checkout page prominently labelled as a development tool that never processes money.
+3. **Production builds without a configured URL** state plainly that checkout is unavailable instead of pointing at a placeholder domain.
+
+Development additionally shows a **Development Test Mode** panel in Settings with *Test as Premium* / *Test as Free* toggles (hidden entirely in production).
 
 ## Security & privacy
 
@@ -62,12 +72,17 @@ Premium features show a 🔒 PREMIUM badge in navigation, render a gate screen, 
 
 ## Documentation
 
-- [USER-GUIDE](./USER-GUIDE.md) — how to use every feature
-- [INSTALLATION](./INSTALLATION.md) — local setup guide
-- [DEPLOYMENT](./DEPLOYMENT.md) — static hosting guide
-- [CHANGELOG](./CHANGELOG.md) — release notes
-- [LICENSE](./LICENSE) — MIT
+- [USER-GUIDE.md](./USER-GUIDE.md) — how to use every feature
+- [INSTALLATION.md](./INSTALLATION.md) — local setup guide
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — static hosting guide
+- [PRICING.md](./PRICING.md) — Free/Premium comparison and configuration
+- [CHANGELOG.md](./CHANGELOG.md) — release notes
+- [LICENSE.md](./LICENSE.md) — MIT
+- [COMMERCIAL-LICENSE.md](./COMMERCIAL-LICENSE.md) — notes for commercial redistribution
 
 ## Pricing
 
-Free: **$0** (limited transactions). Premium: **$9.99 one-time** (configurable in `src/config.ts`). No DRM — the premium flag lives in `localStorage`, easily resettable from Settings.
+Free: **$0** (limited transactions and categories). Premium: **$9.99 one-time**
+(configurable via `VITE_PREMIUM_PRICE` / `VITE_PREMIUM_CURRENCY` /
+`VITE_UPGRADE_URL`). See [PRICING.md](./PRICING.md) for the full comparison and
+integration notes.

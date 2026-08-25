@@ -57,8 +57,21 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-4 text-xs text-slate-500">
-          Offline-first · Your data stays here
+        <div className="px-3 py-4">
+          <NavLink
+            to="/pricing"
+            className={({ isActive }) =>
+              [
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold',
+                isActive ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-800',
+              ].join(' ')
+            }
+          >
+            <span aria-hidden="true">💎</span> Pricing &amp; upgrade
+          </NavLink>
+          <p className="mt-2 px-3 text-xs text-slate-500">
+            Offline-first · Your data stays here
+          </p>
         </div>
       </aside>
 
@@ -76,11 +89,18 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-slate-200 bg-white px-1 py-1 md:hidden">
-        {NAV.map((item) => (
-          <NavItem key={item.to} {...item} />
-        ))}
+      {/* Mobile bottom nav (horizontally scrollable on very small screens) */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-slate-200 bg-white px-1 py-1 md:hidden"
+        aria-label="Primary"
+      >
+        <ul className="flex w-max min-w-full justify-around overflow-x-auto">
+          {NAV.map((item) => (
+            <li key={item.to}>
+              <NavItem {...item} />
+            </li>
+          ))}
+        </ul>
       </nav>
     </div>
   );
@@ -92,7 +112,7 @@ function NavItem(item: NavItem) {
       to={item.to}
       className={({ isActive }) =>
         [
-          'flex flex-col items-center gap-0.5 px-2 py-1.5 text-[10px] font-medium',
+          'flex shrink-0 flex-col items-center gap-0.5 whitespace-nowrap px-2 py-1.5 text-[10px] font-medium',
           isActive ? 'text-emerald-600' : 'text-slate-500',
         ].join(' ')
       }

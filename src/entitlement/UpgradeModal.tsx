@@ -1,9 +1,17 @@
-import { PREMIUM_PRICE, UPGRADE_URL } from '../config';
+import { Link } from 'react-router-dom';
+import {
+  PREMIUM_PRICE_LABEL,
+  TEST_MODE_ENABLED,
+  UPGRADE_URL,
+} from '../config';
 import type { Feature } from './EntitlementContext';
+import { FEATURE_LABELS } from './EntitlementContext';
+import { useDialogA11y } from '../components/Modal';
+import { useId, useRef } from 'react';
 
 const BENEFITS = [
   'Unlimited transactions and categories',
-  'Budget tracking with alerts',
+  'Budget tracking with progress',
   'Recurring transactions',
   'Multiple accounts and wallets',
   'Advanced reports and charts',
@@ -17,16 +25,20 @@ export function UpgradeModal({
   feature: Feature | null;
   onClose: () => void;
 }) {
+  const root = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+  useDialogA11y(root, onClose);
   if (feature === null) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="PocketLedger Premium"
       onClick={onClose}
     >
       <div
+        ref={root}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -37,37 +49,56 @@ export function UpgradeModal({
           <button
             type="button"
             className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Close"
+            aria-label="Close dialog"
             onClick={onClose}
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
           </button>
         </div>
-        <h2 className="mt-3 text-xl font-bold text-slate-900">Upgrade to Premium</h2>
+        <h2 id={titleId} className="mt-3 text-xl font-bold text-slate-900">
+          Upgrade to Premium
+        </h2>
         <p className="mt-1 text-sm text-slate-500">
-          A one-time payment unlocks everything — no subscription, no account.
+          {FEATURE_LABELS[feature]} is a Premium feature. A one-time payment
+          unlocks everything — no subscription, no account.
         </p>
         <ul className="mt-4 space-y-2 text-sm text-slate-700">
           {BENEFITS.map((b) => (
             <li key={b} className="flex items-center gap-2">
-              <span className="text-emerald-600">✔</span>
+              <span className="text-emerald-600" aria-hidden="true">✔</span>
               {b}
             </li>
           ))}
         </ul>
         <div className="mt-6">
-          <a
-            href={UPGRADE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="block w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-center font-semibold text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring"
-          >
-            Upgrade for ${PREMIUM_PRICE}
-          </a>
+          {UPGRADE_URL ? (
+            <a
+              href={UPGRADE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-center font-semibold text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring"
+            >
+              Upgrade for {PREMIUM_PRICE_LABEL}
+            </a>
+          ) : TEST_MODE_ENABLED ? (
+            <Link
+              to="/checkout"
+              onClick={onClose}
+              className="block w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-center font-semibold text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring"
+            >
+              Upgrade for {PREMIUM_PRICE_LABEL} — test checkout
+            </Link>
+          ) : (
+            <p className="w-full rounded-lg bg-slate-100 px-4 py-2.5 text-center text-sm text-slate-500">
+              A checkout URL has not been configured for this build.
+            </p>
+          )}
           <p className="mt-2 text-center text-xs text-slate-400">
-            Opens the configured checkout page in a new tab.
+            {UPGRADE_URL || !TEST_MODE_ENABLED
+              ? 'Opens the configured checkout page.'
+              : 'Opens the internal test checkout — no payment is processed.'}
           </p>
         </div>
         <button

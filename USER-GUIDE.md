@@ -57,7 +57,8 @@ Automate regular bills or paychecks:
 
 ## Settings
 
-- **Plan** — view current plan, "Manage plan" marks premium locally (or downgrade).
+- **Plan** — shows the current plan (Free or Premium) and a link to the Pricing page. In development builds, a clearly-labelled **Development test mode** panel appears here, letting developers toggle between Free and Premium without any payment. In production builds the panel is hidden.
+- **Pricing** — the dedicated Pricing page (`#/pricing`) compares Free vs Premium and contains the upgrade call-to-action.
 - **Accounts 🔒 PREMIUM** — add wallets/bank accounts.
 - **Currency** — used for formatting (e.g., USD, EUR).
 - **Export CSV (Free)** — plain spreadsheet list of transactions.
