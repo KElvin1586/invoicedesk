@@ -14,11 +14,21 @@ The result in `dist/` can be shipped as-is.
 
 ### GitHub Pages
 
-```bash
-npm run build
-# push dist/ to the gh-pages branch, or configure Actions:
-npx gh-pages -d dist
-```
+A workflow (`.github/workflows/deploy.yml`) builds and deploys `dist/` on every
+push to the `pocketledger` branch. The Vite `base` is `/pocketledger/`, so the
+live URL is `https://kelvin1586.github.io/pocketledger/`.
+
+One-time setup in the repository on GitHub:
+
+1. Rename the repository to `pocketledger` (Settings → General → Repository
+   name) so the Pages path matches the Vite base.
+2. Make the repository public (Settings → General → Danger Zone) — GitHub
+   Pages on private repos requires a paid plan.
+3. Enable Pages with the Actions source: Settings → Pages → Source →
+   **GitHub Actions**.
+
+After that, every push deploys automatically. The app uses HashRouter, so no
+404 rewrite rules are needed.
 
 ### Vercel / Netlify
 
