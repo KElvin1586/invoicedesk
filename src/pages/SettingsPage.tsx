@@ -1,0 +1,352 @@
+import { useRef, useState } from 'react';
+import { useData } from '../hooks/DataProvider';
+import { useEntitlement } from '../entitlement/EntitlementContext';
+import { buildExportPayload, importJSON } from '../data/importExport';
+import { downloadFile } from '../utils/download';
+import { toCsv } from '../domain/csvCodec';
+import { addAccount, deleteAccount } from '../data/repo';
+import { db } from '../data/db';
+import { validateText } from '../domain/validators';
+import { Modal } from '../components/Modal';
+import { PremiumBadge } from '../components/premium/PremiumBadge';
+import { DownloadIcon, UploadIcon, TrashIcon } from '../components/Icons';
+
+export function SettingsPage() {
+  const { transactions, categories, accounts, settings, refresh } = useData();
+  const entitlement = useEntitlement();
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [currencySel, setCurrencySel] = useState<string | null>(null);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [mergeMode, setMergeMode] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmUnlock, setConfirmUnlock] = useState(false);
+
+  const currency = settings?.currency ?? 'USD';
+
+  function exportJSON() {
+    if (!entitlement.gate('full-export-import')) return;
+    void buildExportPayload().then((payload) => {
+      const name = `pocketledger-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      downloadFile(name, JSON.stringify(payload, null, 2), 'application/json');
+      setStatus('Backup exported.');
+    });
+  }
+
+  function exportCSV() {
+    const header = ['id', 'date', 'type', 'category', 'account', 'amount', 'note'];
+    const rows = transactions.map((t) => [
+      t.id,
+      t.date,
+      t.type,
+      categories.find((c) => c.id === t.categoryId)?.name ?? '',
+      accounts.find((a) => a.id === t.accountId)?.name ?? '',
+      (t.amount / 100).toFixed(2),
+      t.note,
+    ]);
+    const name = `pocketledger-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    downloadFile(name, toCsv(header, rows), 'text/csv');
+    setStatus('CSV exported.');
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!entitlement.gate('full-export-import')) {
+      e.target.value = '';
+      return;
+    }
+    setError(null);
+    setStatus(null);
+    const text = await file.text();
+    const result = await importJSON(text, !mergeMode);
+    if (!result.ok) {
+      setError(`Import failed: ${result.errors[0] ?? 'Unknown error.'}`);
+      setStatus(null);
+    } else {
+      const s = result.summary!;
+      setStatus(
+        `Imported ${s.transactions} transactions, ${s.categories} categories, ${s.accounts} accounts, ${s.budgets} budgets, ${s.recurring} recurring rules${s.duplicates ? ` (${s.duplicates} duplicate${s.duplicates === 1 ? '' : 's'} skipped)` : ''}.`,
+      );
+      await refresh();
+    }
+    e.target.value = '';
+  }
+
+  async function saveCurrency() {
+    const next = (currencySel ?? currency).toUpperCase();
+    if (next.length !== 3) {
+      setError('Use a 3-letter currency code like USD or EUR.');
+      return;
+    }
+    if (settings) {
+      await db.settings.put({ ...settings, currency: next });
+    } else {
+      await db.settings.put({ id: 'settings', currency: next, createdAt: Date.now() });
+    }
+    setError(null);
+    setStatus(`Currency set to ${next}.`);
+    await refresh();
+  }
+
+  async function handleAddAccount() {
+    if (!entitlement.gate('multiple-accounts')) return;
+    const problem = validateText(newAccountName, 'Account name');
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (accounts.some((a) => a.name.toLowerCase() === newAccountName.trim().toLowerCase())) {
+      setError('An account with this name already exists.');
+      return;
+    }
+    await addAccount(newAccountName.trim());
+    setNewAccountName('');
+    setError(null);
+    setStatus('Account added.');
+    await refresh();
+  }
+
+  async function reset() {
+    await Promise.all([
+      db.transactions.clear(),
+      db.categories.clear(),
+      db.accounts.clear(),
+      db.budgets.clear(),
+      db.recurring.clear(),
+    ]);
+    setConfirmReset(false);
+    await refresh();
+    setStatus('Ledger cleared.');
+  }
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="text-sm text-slate-500">Manage plan, accounts, and data portability.</p>
+      </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="flex items-center font-semibold text-slate-800">
+          Plan
+          {!entitlement.isPremium && <PremiumBadge feature="unlimited-transactions" />}
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Current plan: <strong>{entitlement.plan}</strong>
+          {entitlement.isPremium ? ' — everything is unlocked.' : ' — free limits apply.'}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          {!entitlement.isPremium ? (
+            <button
+              type="button"
+              onClick={() => setConfirmUnlock(true)}
+              className="rounded-lg border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            >
+              Manage plan
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                entitlement.setPlan('free');
+                setStatus('Switched to the Free plan.');
+              }}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Downgrade to Free
+            </button>
+          )}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          Premium status is stored locally in this browser — there is no license server,
+          no tracking, no network calls. The Upgrade button links to the configured checkout URL.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="flex items-center font-semibold text-slate-800">
+          Accounts
+          {!entitlement.isPremium && <PremiumBadge feature="multiple-accounts" />}
+        </h2>
+        <ul className="mt-2 space-y-1 text-sm">
+          {accounts.map((a) => (
+            <li key={a.id} className="flex items-center justify-between rounded-lg py-1.5">
+              <span className="text-slate-700">{a.name}</span>
+              {accounts.length > 1 && entitlement.isPremium && (
+                <button
+                  type="button"
+                  aria-label={`Delete ${a.name}`}
+                  onClick={async () => {
+                    if (transactions.some((t) => t.accountId === a.id)) {
+                      setError(`"${a.name}" has transactions and cannot be removed.`);
+                      return;
+                    }
+                    await deleteAccount(a.id);
+                    setStatus(`Account "${a.name}" removed.`);
+                    setError(null);
+                    await refresh();
+                  }}
+                  className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <div className="mt-3 flex gap-2">
+          <input
+            value={newAccountName}
+            onChange={(e) => setNewAccountName(e.target.value)}
+            placeholder="e.g. Bank, Wallet"
+            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleAddAccount}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+          >
+            Add
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
+          Free accounts have one default wallet. Premium unlocks wallets and bank accounts.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="font-semibold text-slate-800">Currency</h2>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            value={currencySel ?? currency}
+            onChange={(e) => setCurrencySel(e.target.value)}
+            placeholder="USD"
+            maxLength={3}
+            className="w-24 rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase"
+          />
+          <button
+            type="button"
+            onClick={saveCurrency}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Save
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="font-semibold text-slate-800">Export, import & backups</h2>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={exportCSV}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <DownloadIcon className="h-4 w-4" />
+            Export CSV <span className="text-xs text-emerald-600">Free</span>
+          </button>
+          <button
+            type="button"
+            onClick={exportJSON}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <DownloadIcon className="h-4 w-4" />
+            Export backup (JSON)
+            {!entitlement.canUse('full-export-import') && <PremiumBadge feature="full-export-import" />}
+          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <UploadIcon className="h-4 w-4" />
+              Import JSON
+              {!entitlement.canUse('full-export-import') && <PremiumBadge feature="full-export-import" />}
+            </button>
+            <label className="flex items-center gap-1.5 text-xs text-slate-500">
+              <input
+                type="checkbox"
+                checked={mergeMode}
+                onChange={(e) => setMergeMode(e.target.checked)}
+              />
+              Merge instead of replace
+            </label>
+          </div>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={handleImport}
+        />
+        {status && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{status}</p>}
+        {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>}
+      </section>
+
+      <section className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+        <h2 className="font-semibold text-red-700">Danger zone</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Clear all transactions, categories, budgets, and accounts in this browser.
+        </p>
+        <button
+          type="button"
+          onClick={() => setConfirmReset(true)}
+          className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white"
+        >
+          Erase everything
+        </button>
+      </section>
+
+      {confirmUnlock && (
+        <Modal title="Manage plan" onClose={() => setConfirmUnlock(false)}>
+          <p className="text-sm text-slate-600">
+            To upgrade, use the one-time checkout link. Already purchased? The entitlement is
+            stored locally — choose below. No license key checking is performed.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                entitlement.setPlan('premium');
+                setConfirmUnlock(false);
+                setStatus('Premium enabled — thanks!');
+              }}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+            >
+              Mark as purchased (Premium)
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmUnlock(false)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {confirmReset && (
+        <Modal title="Erase everything" onClose={() => setConfirmReset(false)}>
+          <p className="text-sm text-slate-600">
+            This removes all transactions, budgets, categories, and accounts in this browser.
+            This cannot be undone. Export a backup first if you need the data.
+          </p>
+          <div className="mt-4 flex gap-3">
+            <button type="button" onClick={reset} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white">
+              Erase everything
+            </button>
+            <button type="button" onClick={() => setConfirmReset(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
