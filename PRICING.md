@@ -43,7 +43,7 @@ If `VITE_UPGRADE_URL` is empty:
   checkout** and exists purely to exercise Free ↔ Premium entitlement flows.
   No payment is processed, requested, or simulated as successful.
 - **Production builds** honestly show that no checkout URL is configured —
-  the app never sends users to a placeholder domain such as example.com.
+  the app never sends users to a placeholder or dummy domain.
 
 ## Upgrade flow
 
@@ -54,29 +54,50 @@ Free user → 🔒 PREMIUM feature → Upgrade Modal → Upgrade button → chec
 The centralized entitlement lives in `src/entitlement/EntitlementContext.tsx`.
 All premium actions go through `gate(feature)`; nothing is scattered across pages.
 
-## Development test mode
+## Development test mode ≠ real customer payment
 
-`TEST_MODE_ENABLED` (in `src/config.ts`) is true only in non-production builds
-(`import.meta.env.DEV`). When enabled:
+These are two completely separate things:
 
-- The Settings page shows a **Development Test Mode** panel with *Test as
-  Premium* / *Test as Free* toggles.
-- The internal `/checkout` route is available and clearly labelled as a test
-  page that never handles real money.
+- **Development test mode** — `TEST_MODE_ENABLED` (in `src/config.ts`) is true
+  only in non-production builds (`!import.meta.env.PROD`). When enabled, the
+  Settings page shows a *Development Test Mode* panel with **Test as Premium** /
+  **Test as Free** toggles, and the internal `/checkout` route is available,
+  clearly labelled as a test page that never handles real money. This exists
+  solely so developers can exercise the Free ↔ Premium entitlement flows.
+- **Real customer payment** — handled entirely by your payment provider at the
+  URL you configure in `VITE_UPGRADE_URL`. PocketLedger contains no payment
+  code and never will; the provider's checkout page is the only place money
+  moves.
 
-Production builds hide both: entitlement can then only become Premium through
-an externally completed purchase verifiable by whoever runs the checkout.
+Production builds hide the test-mode panel and the internal test checkout
+route entirely. Nothing about test mode can unlock Premium for a real user.
 
-## Future payment integration
+## Connecting a real checkout
 
-No payment SDK is bundled. To connect a real provider (Stripe, Lemon Squeezy,
-Paddle…):
+No payment SDK is bundled. To go live:
 
-1. Set `VITE_UPGRADE_URL` to your checkout link at build time.
-2. After a successful purchase, have the provider redirect the customer to a
-   success page that you control; from that page, set entitlement locally,
-   e.g. `localStorage.setItem('pocketledger-entitlement', '{"plan":"premium"}')`
-   (or serve a "confirm" page built on top of the SDK you choose).
+1. **Create the product** in your chosen payment provider (a one-time
+   "PocketLedger Premium" product).
+2. **Create the checkout / payment link** for that product in the provider's
+   dashboard.
+3. **Set `VITE_UPGRADE_URL` to that URL** — copy `.env.example` to `.env`
+   (git-ignored) or pass it directly on the build command line.
+4. **Rebuild the application** (`npm run build`) and deploy the new `dist/`.
+   Vite environment variables are baked in at build time; changing `.env`
+   without rebuilding has no effect.
+5. **Test the checkout**: open the deployed app, trigger any 🔒 PREMIUM
+   feature, click the upgrade button, and confirm it opens your real checkout.
+   Use your provider's test/sandbox mode for the first run.
+6. **Never put private API keys or payment secrets in `VITE_*` variables** —
+   everything prefixed with `VITE_` is embedded in the public frontend bundle
+   and visible to anyone. Payment credentials belong exclusively on the
+   provider's backend. The checkout URL itself is a public link by design.
+
+Until a real checkout URL is supplied, no payment flow exists and the app says
+so. After a successful purchase, grant Premium by having the provider redirect
+the customer to a success page you control, which sets the local entitlement:
+`localStorage.setItem('pocketledger-entitlement', '{"plan":"premium"}')`
+(or serve a confirm page built on top of your provider's SDK).
 
 No license server, no payment credentials in the repo, no webhook secrets in
 frontend code. All premium state stays client-side.

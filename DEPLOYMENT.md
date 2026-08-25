@@ -50,8 +50,34 @@ The app is already offline-first by design (IndexedDB). If you want installabili
 
 ## Configuration at build time
 
-Use env vars to adjust pricing/URL before building:
+Use env vars to adjust pricing/URL before building. Copy `.env.example` to
+`.env` (git-ignored) or pass variables inline:
 
+```bash
+VITE_UPGRADE_URL="<the checkout link from your payment provider>" \
+VITE_PREMIUM_PRICE=9.99 \
+VITE_PREMIUM_CURRENCY=USD \
+npm run build
 ```
-VITE_UPGRADE_URL="https://your-store.com/checkout" VITE_PREMIUM_PRICE=14.99 VITE_PREMIUM_CURRENCY=USD npm run build
-```
+
+### Enabling the real Premium checkout
+
+1. **Create the product** in your payment provider of choice (one-time
+   "PocketLedger Premium").
+2. **Create the checkout / payment link** in that provider's dashboard.
+3. **Set `VITE_UPGRADE_URL`** to that exact link before building.
+4. **Rebuild** (`npm run build`) and redeploy — Vite env vars are baked in at
+   build time; editing `.env` without rebuilding does nothing.
+5. **Test the checkout** on the deployed site: trigger a 🔒 PREMIUM feature,
+   click the upgrade button, confirm your real checkout opens. Use the
+   provider's sandbox/test mode first.
+6. **Never put private API or payment secrets in `VITE_*` variables** — they
+   are embedded in the public bundle. Credentials live only on the provider's
+   backend.
+
+If `VITE_UPGRADE_URL` is left empty, production honestly tells users that
+checkout is not configured — no placeholder URL, no fake payment screen.
+Development builds additionally expose a clearly-labelled internal test
+checkout and Free/Premium toggles; neither exists in the production bundle.
+
+See [PRICING.md](./PRICING.md) for the full commercial configuration reference.

@@ -95,11 +95,13 @@ export function UpgradeModal({
               A checkout URL has not been configured for this build.
             </p>
           )}
-          <p className="mt-2 text-center text-xs text-slate-400">
-            {UPGRADE_URL || !TEST_MODE_ENABLED
-              ? 'Opens the configured checkout page.'
-              : 'Opens the internal test checkout — no payment is processed.'}
-          </p>
+          {(UPGRADE_URL || TEST_MODE_ENABLED) && (
+            <p className="mt-2 text-center text-xs text-slate-400">
+              {UPGRADE_URL
+                ? 'Opens the configured checkout page.'
+                : 'Opens the internal test checkout — no payment is processed.'}
+            </p>
+          )}
         </div>
         <button
           type="button"
